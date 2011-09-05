@@ -4,7 +4,9 @@ usage:
 ======
 
 add `dbconfig` to INSTALLED_APPS
+
 turn on "admin autodiscover"
+
 somewhere in your models
 
     from dbconfig import ConfigGroup

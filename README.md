@@ -18,3 +18,7 @@ somewhere in your models
         
         verbose_name = "News config"
 
+
+access value in code as `NewsConfig.config.per_page`
+
+possible value types: `int`, `unicode`, `bool`, `datetime.date`, `datetime.datetime`

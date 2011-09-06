@@ -81,6 +81,9 @@ class DbConfigValue(models.Model):
     
     objects = DbConfigValueManager()
     
+    def __unicode__(self):
+        return self.name
+    
     class Meta:
         verbose_name = "Config"
         verbose_name_plural = "Config"

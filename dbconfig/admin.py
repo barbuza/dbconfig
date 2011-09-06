@@ -6,6 +6,7 @@ from django import template
 from django.shortcuts import render_to_response, redirect
 
 import models
+import utils
 
 
 class ConfigAdmin(admin.ModelAdmin):
@@ -17,14 +18,17 @@ class ConfigAdmin(admin.ModelAdmin):
     def changelist_view(self, request, extra_context=None):
         valid = True
         forms = []
-        for name, cls in models.registry:
+        for name, cls in utils.registry:
             form_cls = cls.admin_form()
+            initial = {}
+            for key, value in cls.values().items():
+                initial["%s.%s" % (name, key)] = value
             if request.method == "POST":
-                form = form_cls(request.POST)
+                form = form_cls(request.POST, initial=initial)
                 if not form.is_valid():
                     valid = False
             else:
-                form = form_cls()
+                form = form_cls(initial=initial)
             forms.append({
                 "cls": cls,
                 "name": cls.verbose_name,
@@ -41,5 +45,5 @@ class ConfigAdmin(admin.ModelAdmin):
         return render_to_response("admin/dbconfig_list.html", context)
 
 
-if models.registry:
+if utils.registry:
     admin.site.register(models.DbConfigValue, ConfigAdmin)

@@ -6,6 +6,7 @@ import cPickle
 
 from django.db import models
 from django.db.models.fields.files import FieldFile, ImageFieldFile
+from django.core import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.uploadedfile import UploadedFile
 from django.core.files.storage import default_storage
@@ -84,18 +85,21 @@ class DbConfigValueManager(models.Manager):
     
     def __init__(self):
         super(DbConfigValueManager, self).__init__()
-        self._cache = {}
+        try:
+            self._cache = cache.get_cache("dbconfig")
+        except ValueError:
+            self._cache = cache.get_cache("locmem://")
     
     def get_value_for(self, name):
-        if name in self._cache:
-            value = self._cache[name]
+        if self._cache.has_key(name):
+            value = self._cache.get(name)
             if isinstance(value, Reference):
                 value = value.get_instance()
             return value
         try:
             db_value = self.get(name=name)
             value = db_value.get_value()
-            self._cache[name] = value
+            self._cache.set(name, value)
             if isinstance(value, Reference):
                 value = value.get_instance()
             return value
@@ -110,7 +114,7 @@ class DbConfigValueManager(models.Manager):
         elif isinstance(value, FieldFile) or \
                 isinstance(value, ConfigFile):
             value = FileReference(value)
-        self._cache[name] = value
+        self._cache.set(name, value)
         try:
             db_value = self.get(name=name)
         except ObjectDoesNotExist:

@@ -24,3 +24,5 @@ somewhere in your models
 
 access value in code as `NewsConfig.per_page` (with dynamic getattr / setattr)
 or with get / set functions as `NewsConfig.get_per_page()` and `NewsConfig.set_per_page(15)`
+
+values will be cached in `dbconfig` cache backend if configured, or in locmem by default

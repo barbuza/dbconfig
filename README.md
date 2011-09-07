@@ -26,3 +26,9 @@ access value in code as `NewsConfig.per_page` (with dynamic getattr / setattr)
 or with get / set functions as `NewsConfig.get_per_page()` and `NewsConfig.set_per_page(15)`
 
 values will be cached in `dbconfig` cache backend if configured, or in locmem by default
+
+files will be stored in `conf` directory under your `MEDIA_ROOT` with default storage,
+they will be represented as `dbconfig.ConfigFile` which has `name`, `path` and `url` properties
+
+model instances will be stored as pair of content type id and instance id, so you will not
+have serialized model instances in database or cache

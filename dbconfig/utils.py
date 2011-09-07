@@ -111,7 +111,7 @@ class ConfigGroup(object):
                 attrs["get_%s" % field_name] = create_getter(field_name)
                 attrs["set_%s" % field_name] = create_setter(field_name)
             
-            attrs.update(Meta=meta)
+            attrs.update(_meta=meta)
             klass = type.__new__(self, name, bases, attrs)
             
             # we register subclass in a list to automaticly display
@@ -123,7 +123,7 @@ class ConfigGroup(object):
         
         # getattr / setattr are passed to config manager instance
         def __getattr__(self, name):
-            return getattr(self.Meta.config_manager, name)
+            return getattr(self._meta.config_manager, name)
         
         def __setattr__(self, name, value):
-            return setattr(self.Meta.config_manager, name, value)
+            return setattr(self._meta.config_manager, name, value)

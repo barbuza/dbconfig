@@ -24,8 +24,8 @@ class ConfigAdmin(admin.ModelAdmin):
         valid = True
         forms = []
         for group_cls in utils.registry:
-            form_class = group_cls.Meta.form_class
-            form_initial = group_cls.Meta.form_initial
+            form_class = group_cls._meta.form_class
+            form_initial = group_cls._meta.form_initial
             if request.method == "POST":
                 form = form_class(request.POST, request.FILES,
                                   initial=form_initial)
@@ -43,7 +43,7 @@ class ConfigAdmin(admin.ModelAdmin):
             })
         if request.method == "POST" and valid:
             for form in forms:
-                form["cls"].Meta.update(**form["form"].cleaned_data)
+                form["cls"]._meta.update(**form["form"].cleaned_data)
             self.message_user(request, u"Config saved")
             return redirect(request.path)
         context = template.RequestContext(request, {"forms": forms})

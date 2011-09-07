@@ -24,22 +24,27 @@ class ConfigAdmin(admin.ModelAdmin):
         valid = True
         forms = []
         for name, group_cls in utils.registry:
+            form_class = group_cls.Meta.form_class
+            form_initial = group_cls.Meta.form_initial
             if request.method == "POST":
-                form = group_cls.Form(request.POST,
-                                      initial=group_cls.form_initial)
+                form = form_class(request.POST, request.FILES,
+                                  initial=form_initial)
                 if not form.is_valid():
                     valid = False
             else:
-                form = group_cls.Form(initial=group_cls.form_initial)
+                form = form_class(initial=form_initial)
+            title = getattr(group_cls, "verbose_name", None)
+            if not isinstance(title, basestring):
+                title = group_cls.__name__
             forms.append({
                 "cls":  group_cls,
-                "name": group_cls.verbose_name,
-                "form": form
+                "name": title,
+                "form": form,
             })
         if request.method == "POST" and valid:
             for form in forms:
-                form["cls"].update(**form["form"].cleaned_data)
-            self.message_user(request, u"Config values saved")
+                form["cls"].Meta.update(**form["form"].cleaned_data)
+            self.message_user(request, u"Config saved")
             return redirect(request.path)
         context = template.RequestContext(request, {"forms": forms})
         return render_to_response("admin/dbconfig_list.html", context)

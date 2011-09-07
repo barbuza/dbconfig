@@ -1,10 +1,16 @@
 # -*- coding: utf-8 -*-
 
+import os
 import base64
 import cPickle
+
 from django.db import models
-from django.contrib.contenttypes.models import ContentType
+from django.db.models.fields.files import FieldFile, ImageFieldFile
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.files.uploadedfile import UploadedFile
+from django.core.files.storage import default_storage
+from django.contrib.contenttypes.models import ContentType
+from django.conf import settings
 
 
 __all__ = ("DbConfigValue", "Model", )
@@ -13,7 +19,13 @@ __all__ = ("DbConfigValue", "Model", )
 Model = models.Model
 
 
-class ModelReference(object):
+class Reference(object):
+    
+    def get_instance(self):
+        raise NotImplementedError
+
+
+class ModelReference(Reference):
     
     def __init__(self, instance):
         ctype = ContentType.objects.get_for_model(type(instance))
@@ -28,6 +40,46 @@ class ModelReference(object):
             return None
 
 
+class FileReference(Reference):
+    
+    def __init__(self, field_file):
+        self.name = field_file.name
+    
+    def get_instance(self):
+        return ConfigFile(self.name)
+
+
+class UploadedFileReference(FileReference):
+    
+    def __init__(self, uploaded_file):
+        self.name = self.save_uploaded_file(uploaded_file)
+    
+    def save_uploaded_file(self, uploaded_file):
+        name = "conf/%s" % uploaded_file.name
+        path = os.path.join(os.path.abspath(settings.MEDIA_ROOT),
+                            name)
+        default_storage.save(path, uploaded_file)
+        return name
+
+
+class ConfigFile(object):
+    
+    def __init__(self, name):
+        self.name = name
+    
+    @property
+    def path(self):
+        return os.path.join(os.path.abspath(settings.MEDIA_ROOT),
+                            self.name)
+    
+    @property
+    def url(self):
+        return settings.MEDIA_URL + self.name
+    
+    def __unicode__(self):
+        return self.name
+
+
 class DbConfigValueManager(models.Manager):
     
     def __init__(self):
@@ -37,14 +89,14 @@ class DbConfigValueManager(models.Manager):
     def get_value_for(self, name):
         if name in self._cache:
             value = self._cache[name]
-            if isinstance(value, ModelReference):
+            if isinstance(value, Reference):
                 value = value.get_instance()
             return value
         try:
             db_value = self.get(name=name)
             value = db_value.get_value()
             self._cache[name] = value
-            if isinstance(value, ModelReference):
+            if isinstance(value, Reference):
                 value = value.get_instance()
             return value
         except ObjectDoesNotExist:
@@ -53,6 +105,11 @@ class DbConfigValueManager(models.Manager):
     def set_value_for(self, name, value):
         if isinstance(value, models.Model):
             value = ModelReference(value)
+        elif isinstance(value, UploadedFile):
+            value = UploadedFileReference(value)
+        elif isinstance(value, FieldFile) or \
+                isinstance(value, ConfigFile):
+            value = FileReference(value)
         self._cache[name] = value
         try:
             db_value = self.get(name=name)

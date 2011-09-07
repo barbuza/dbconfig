@@ -8,21 +8,6 @@ import models
 registry = []
 
 
-class cached_property(object):
-    
-    def __init__(self, method, name=None):
-        self.method = method
-        self.name = name or method.__name__
-        self.__doc__ = method.__doc__
-    
-    def __get__(self, inst, cls):
-        if inst is None:
-            return self
-        result = self.method(inst)
-        setattr(inst, self.name, result)
-        return result
-
-
 class ConfigManager(object):
     
     def __init__(self, name, fields):
@@ -32,6 +17,8 @@ class ConfigManager(object):
     def __getattr__(self, name):
         if name.startswith("_"):
             return super(ConfigManager, self).__getattr__(name)
+        if name not in self._fields:
+            raise AttributeError(name)
         field_name = "%s.%s" % (self._name, name)
         return models.DbConfigValue.objects.get_value_for(field_name)
     
@@ -45,53 +32,103 @@ class ConfigManager(object):
         models.DbConfigValue.objects.set_value_for(field_name, value)
 
 
+class ConfigGroupMeta(object):
+    
+    def update(self, **kwargs):
+        for name, value in kwargs.items():
+            if name.startswith("%s." % self.name):
+                name = name[len(self.name) + 1:]
+            setattr(self.config_manager, name, value)
+    
+    @property
+    def keys(self):
+        return self.fields.keys()
+    
+    @property
+    def values(self):
+        res = {}
+        for name in self.keys:
+            res[name] = getattr(self.config_manager, name)
+        return res
+    
+    @property
+    def form_initial(self):
+        res = {}
+        for name in self.keys:
+            field_name = "%s.%s" % (self.name, name)
+            res[field_name] = getattr(self.config_manager, name)
+        return res
+
+
 class ConfigGroup(object):
     
     class __metaclass__(type):
         
         def __new__(self, name, bases, attrs):
+            
+            # skip all magic for ConfigGroup class itself
             if bases == (object, ):
                 return type.__new__(self, name, bases, attrs)
-            attrs.update(config=ConfigManager(name, attrs))
+            
+            # pop all form fields from subclass to move them
+            # into "Meta" class and create a "Form" class
+            fields = {}
+            for key in attrs.keys():
+                if isinstance(attrs[key], forms.Field):
+                    fields[key] = attrs.pop(key)
+            
+            # config manager will be used to get / set values
+            config_manager = ConfigManager(name, fields)
+            
+            # "Form" class is created based on fields definitions
+            # fields will contain subclass name as prefix to allow
+            # multiple forms usage on same page without creating
+            # boring formsets
+            form_attrs = {}
+            for field_name, field in fields.items():
+                form_attrs["%s.%s" % (name, field_name)] = field
+            form = type(name + "Form", (forms.Form, ), form_attrs)
+            
+            # "Meta" class will hold fields definition, manager
+            # instance and "Form" class
+            meta_attrs = {
+                "name": name,
+                "config_manager": config_manager,
+                "form_class": form,
+                "fields": fields
+            }
+            meta = type(name + "Meta", (ConfigGroupMeta, ), meta_attrs)()
+            
+            def create_getter(field_name):
+                def getter():
+                    return getattr(config_manager, field_name)
+                getter.__name__ = "get_%s" % field_name
+                return staticmethod(getter)
+            
+            def create_setter(field_name):
+                def setter(value):
+                    return setattr(config_manager, field_name, value)
+                setter.__name__ = "set_%s" % field_name
+                return staticmethod(setter)
+            
+            # define getter / setter functions for all fields
+            for field_name in fields:
+                attrs["get_%s" % field_name] = create_getter(field_name)
+                attrs["set_%s" % field_name] = create_setter(field_name)
+            
+            attrs.update(Meta=meta)
             klass = type.__new__(self, name, bases, attrs)
+            
+            # we register subclass in a list to automaticly display
+            # all config forms on admin page
             if (name, klass) not in registry:
                 registry.append((name, klass))
+            
             return klass
         
-        def update(self, **kwargs):
-            for name, value in kwargs.items():
-                if name.startswith("%s." % self.__name__):
-                    name = name[len(self.__name__) + 1:]
-                setattr(self.config, name, value)
+        # getattr / setattr are passed to config manager instance
+        def __getattr__(self, name):
+            return getattr(self.Meta.config_manager, name)
         
-        @property
-        def keys(self):
-            keys = []
-            for name in dir(self):
-                if isinstance(getattr(self, name), forms.Field):
-                    keys.append(name)
-            return keys
-        
-        @property
-        def values(self):
-            res = {}
-            for name in self.keys:
-                res[name] = getattr(self.config, name)
-            return res
-        
-        @cached_property
-        def Form(self):
-            fields = {}
-            for name in self.keys:
-                fields["%s.%s" % (self.__name__, name)] = getattr(self, name)
-            klass = type("%sForm" % self.__name__, (forms.Form, ), fields)
-            klass.__module__ = self.__module__
-            return klass
-        
-        @property
-        def form_initial(self):
-            res = {}
-            for name in self.keys:
-                field_name = "%s.%s" % (self.__name__, name)
-                res[field_name] = getattr(self.config, name)
-            return res
+        def __setattr__(self, name, value):
+            return setattr(self.Meta.config_manager, name, value)

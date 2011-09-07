@@ -30,9 +30,8 @@
 </script>
 <style type="text/css" media="all">
   h3 { margin-bottom: 20px }
-  p label { width: 200px; display: block; float: left; font-weight: bold }
-  p input { float: left; }
-  p { clear: left; overflow: hidden }
+  .conftable td, .conftable th { vertical-align: middle }
+  .conftable th { text-align: right; padding: 0 15px }
 </style>
 {% endblock %}
 
@@ -54,11 +53,13 @@
 
 {% block content %}
   <div id="content-main">
-    <form method="post" action="./">{% csrf_token %}
+    <form method="post" action="./" enctype="multipart/form-data">{% csrf_token %}
       {% for form in forms %}
         <div class="module">
           <h3>{{ form.name }}</h3>
-          {{ form.form.as_p }}
+          <table class="conftable">
+            {{ form.form.as_table }}
+          </table>
         </div>
       {% endfor %}
       <div class="submit-row">

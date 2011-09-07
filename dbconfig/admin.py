@@ -23,7 +23,7 @@ class ConfigAdmin(admin.ModelAdmin):
     def changelist_view(self, request, extra_context=None):
         valid = True
         forms = []
-        for name, group_cls in utils.registry:
+        for group_cls in utils.registry:
             form_class = group_cls.Meta.form_class
             form_initial = group_cls.Meta.form_initial
             if request.method == "POST":

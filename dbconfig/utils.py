@@ -11,20 +11,15 @@ registry = []
 class ConfigManager(object):
     
     def __init__(self, name, fields):
-        self._name = name
-        self._fields = fields
+        self.__dict__.update(_name=name, _fields=fields)
     
     def __getattr__(self, name):
-        if name.startswith("_"):
-            return super(ConfigManager, self).__getattr__(name)
         if name not in self._fields:
             raise AttributeError(name)
         field_name = "%s.%s" % (self._name, name)
         return models.DbConfigValue.objects.get_value_for(field_name)
     
     def __setattr__(self, name, value):
-        if name.startswith("_"):
-            return super(ConfigManager, self).__setattr__(name, value)
         if name not in self._fields \
                 or not isinstance(self._fields[name], forms.Field):
             raise AttributeError(name)
@@ -102,13 +97,13 @@ class ConfigGroup(object):
             def create_getter(field_name):
                 def getter():
                     return getattr(config_manager, field_name)
-                getter.__name__ = "get_%s" % field_name
+                getter.__name__ = "%s.get_%s" % (name, field_name)
                 return staticmethod(getter)
             
             def create_setter(field_name):
                 def setter(value):
                     return setattr(config_manager, field_name, value)
-                setter.__name__ = "set_%s" % field_name
+                setter.__name__ = "%s.set_%s" % (name, field_name)
                 return staticmethod(setter)
             
             # define getter / setter functions for all fields
@@ -121,8 +116,8 @@ class ConfigGroup(object):
             
             # we register subclass in a list to automaticly display
             # all config forms on admin page
-            if (name, klass) not in registry:
-                registry.append((name, klass))
+            if klass not in registry:
+                registry.append(klass)
             
             return klass
         

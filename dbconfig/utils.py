@@ -69,6 +69,15 @@ class ConfigGroupMeta(object):
         return res
 
 
+class StaticProperty(object):
+    
+    def __init__(self, name):
+        self.name = name
+    
+    def __get__(self, owner, cls):
+        return getattr(cls._meta.config_manager, self.name)
+
+
 class ConfigGroup(object):
     
     class __metaclass__(type):
@@ -122,6 +131,7 @@ class ConfigGroup(object):
             for field_name in fields:
                 attrs["get_%s" % field_name] = create_getter(field_name)
                 attrs["set_%s" % field_name] = create_setter(field_name)
+                attrs[field_name] = StaticProperty(field_name)
             
             attrs.update(_meta=meta)
             klass = type.__new__(self, name, bases, attrs)
@@ -133,9 +143,6 @@ class ConfigGroup(object):
             
             return klass
         
-        # getattr / setattr are passed to config manager instance
-        def __getattr__(self, name):
-            return getattr(self._meta.config_manager, name)
-        
+        # setattr is passed to config manager instance
         def __setattr__(self, name, value):
             return setattr(self._meta.config_manager, name, value)

@@ -14,10 +14,9 @@ from django.contrib.contenttypes.models import ContentType
 from django.conf import settings
 
 
-__all__ = ("DbConfigValue", "Model", "ConfigFile", )
+__all__ = ("DbConfigValue", "ConfigFile", )
 
 
-Model = models.Model
 get_apps = models.get_apps
 
 

@@ -32,3 +32,6 @@ they will be represented as `dbconfig.ConfigFile` which has `name`, `path` and `
 
 model instances will be stored as pair of content type id and instance id, so you will not
 have serialized model instances in database or cache
+
+there is `dbconfig.config_context` context processor, it will populate context will all available
+config group subclasses

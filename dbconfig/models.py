@@ -18,6 +18,7 @@ __all__ = ("DbConfigValue", "Model", "ConfigFile", )
 
 
 Model = models.Model
+get_apps = models.get_apps
 
 
 class Reference(object):

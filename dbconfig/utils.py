@@ -8,6 +8,17 @@ import models
 registry = []
 
 
+def autodiscover():
+    for models_module in models.get_apps():
+        app_name = models_module.__name__.rsplit(".", 1)[0]
+        conf_module = "%s.config" % app_name
+        try:
+            __import__(conf_module)
+        except ImportError as err:
+            if str(err) != "No module named config":
+                raise
+
+
 class ConfigManager(object):
     
     def __init__(self, name, fields):
@@ -95,14 +106,12 @@ class ConfigGroup(object):
             meta = type(name + "Meta", (ConfigGroupMeta, ), meta_attrs)()
             
             def create_getter(field_name):
-                def getter():
-                    return getattr(config_manager, field_name)
+                getter = lambda: getattr(config_manager, field_name)
                 getter.__name__ = "%s.get_%s" % (name, field_name)
                 return staticmethod(getter)
             
             def create_setter(field_name):
-                def setter(value):
-                    return setattr(config_manager, field_name, value)
+                setter = lambda val: setattr(config_manager, field_name, val)
                 setter.__name__ = "%s.set_%s" % (name, field_name)
                 return staticmethod(setter)
             
@@ -114,7 +123,7 @@ class ConfigGroup(object):
             attrs.update(_meta=meta)
             klass = type.__new__(self, name, bases, attrs)
             
-            # we register subclass in a list to automaticly display
+            # we register subclass in a list to automatically display
             # all config forms on admin page
             if klass not in registry:
                 registry.append(klass)

@@ -5,6 +5,9 @@ from django import forms
 import models
 
 
+__all__ = ("registry", "ConfigGroup", "autodiscover", )
+
+
 registry = []
 
 

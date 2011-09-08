@@ -129,9 +129,11 @@ class ConfigGroup(object):
             
             # define getter / setter functions for all fields
             for field_name in fields:
-                attrs["get_%s" % field_name] = create_getter(field_name)
-                attrs["set_%s" % field_name] = create_setter(field_name)
-                attrs[field_name] = StaticProperty(field_name)
+                attrs.update({
+                    field_name: StaticProperty(field_name),
+                    "get_%s" % field_name: create_getter(field_name),
+                    "set_%s" % field_name: create_setter(field_name),
+                })
             
             attrs.update(_meta=meta)
             klass = type.__new__(self, name, bases, attrs)

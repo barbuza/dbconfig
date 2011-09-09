@@ -35,3 +35,6 @@ have serialized model instances in database or cache
 
 there is `dbconfig.config_context` context processor, it will populate context will all available
 config group subclasses
+
+remember that `dbconfig.autodiscover()` should be used before `admin.autodiscover()`
+(if you want to place your ConfigGroup subclasses in %appname%.config modules)

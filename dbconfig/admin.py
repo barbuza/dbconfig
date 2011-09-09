@@ -35,7 +35,7 @@ class ConfigAdmin(admin.ModelAdmin):
                 form = form_class(initial=form_initial)
             title = getattr(group_cls, "verbose_name", None)
             if not isinstance(title, basestring):
-                title = group_cls.__name__
+                title = group_cls._meta.name
             forms.append({
                 "cls":  group_cls,
                 "name": title,

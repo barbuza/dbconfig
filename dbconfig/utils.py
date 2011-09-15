@@ -17,7 +17,7 @@ def autodiscover():
         conf_module = "%s.config" % app_name
         try:
             __import__(conf_module)
-        except ImportError as err:
+        except ImportError, err:
             if str(err) != "No module named config":
                 raise
 

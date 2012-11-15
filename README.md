@@ -38,3 +38,17 @@ config group subclasses
 
 remember that `dbconfig.autodiscover()` should be used before `admin.autodiscover()`
 (if you want to place your ConfigGroup subclasses in %appname%.config modules)
+
+configure your cache backends
+
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "default",
+        },
+        "dbconfig": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "dbconfig",        
+        },
+    }
+

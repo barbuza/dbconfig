@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='dbconfig',
-    version='0.1.8',
+    version='0.2.0',
     packages=['dbconfig'],
     package_data={
         '': ['templates/admin/dbconfig_list.html']

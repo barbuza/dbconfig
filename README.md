@@ -1,5 +1,7 @@
 dbconfig is easy to use app which stores user defined configs in database
 
+`0.3.0` version is python3 only (too lazy to mantain python2 compatibility)
+
 usage:
 ======
 
@@ -7,7 +9,7 @@ add `dbconfig` to INSTALLED_APPS
 
 turn on "admin autodiscover"
 
-somewhere in your models
+create `config.py` file in your app (near `models.py`)
 
     from django import forms
     from dbconfig import ConfigGroup

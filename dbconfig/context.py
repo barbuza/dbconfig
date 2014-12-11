@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import utils
+from .utils import registry
 
 
 __all__ = ("config_context", )
@@ -8,4 +8,4 @@ __all__ = ("config_context", )
 
 def config_context(request):
     return dict([(group._meta.name, group)
-                 for group in utils.registry])
+                 for group in registry])

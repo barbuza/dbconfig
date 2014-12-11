@@ -5,8 +5,8 @@ from django.contrib.admin.options import csrf_protect_m
 from django import template
 from django.shortcuts import render_to_response, redirect
 
-import models
-import utils
+from .models import DbConfigValue
+from .utils import registry
 
 
 class ConfigAdmin(admin.ModelAdmin):
@@ -23,7 +23,7 @@ class ConfigAdmin(admin.ModelAdmin):
     def changelist_view(self, request, extra_context=None):
         valid = True
         forms = []
-        for group_cls in utils.registry:
+        for group_cls in registry:
             form_class = group_cls._meta.form_class
             form_initial = group_cls._meta.form_initial
             if request.method == "POST":
@@ -34,7 +34,7 @@ class ConfigAdmin(admin.ModelAdmin):
             else:
                 form = form_class(initial=form_initial)
             title = getattr(group_cls, "verbose_name", None)
-            if not isinstance(title, basestring):
+            if not isinstance(title, str):
                 title = group_cls._meta.name
             forms.append({
                 "cls":  group_cls,
@@ -50,5 +50,5 @@ class ConfigAdmin(admin.ModelAdmin):
         return render_to_response("admin/dbconfig_list.html", context)
 
 
-if utils.registry:
-    admin.site.register(models.DbConfigValue, ConfigAdmin)
+if registry:
+    admin.site.register(DbConfigValue, ConfigAdmin)

@@ -2,7 +2,7 @@
 
 from django import forms
 
-import models
+from .models import get_apps, DbConfigValue
 
 
 __all__ = ("registry", "ConfigGroup", "autodiscover", )
@@ -12,17 +12,17 @@ registry = []
 
 
 def autodiscover():
-    for models_module in models.get_apps():
+    for models_module in get_apps():
         app_name = models_module.__name__.rsplit(".", 1)[0]
         conf_module = "%s.config" % app_name
         try:
             __import__(conf_module)
-        except ImportError, err:
-            if str(err) != "No module named config":
+        except ImportError as err:
+            if str(err) != "No module named '%s'" % conf_module:
                 raise
 
 
-class ConfigManager(object):
+class ConfigManager:
     
     def __init__(self, name, fields):
         self.__dict__.update(_name=name, _fields=fields)
@@ -31,17 +31,17 @@ class ConfigManager(object):
         if name not in self._fields:
             raise AttributeError(name)
         field_name = "%s.%s" % (self._name, name)
-        return models.DbConfigValue.objects.get_value_for(field_name)
+        return DbConfigValue.objects.get_value_for(field_name)
     
     def __setattr__(self, name, value):
         if name not in self._fields \
                 or not isinstance(self._fields[name], forms.Field):
             raise AttributeError(name)
         field_name = "%s.%s" % (self._name, name)
-        models.DbConfigValue.objects.set_value_for(field_name, value)
+        DbConfigValue.objects.set_value_for(field_name, value)
 
 
-class ConfigGroupMeta(object):
+class ConfigGroupMeta:
     
     def update(self, **kwargs):
         for name, value in kwargs.items():
@@ -69,7 +69,7 @@ class ConfigGroupMeta(object):
         return res
 
 
-class StaticProperty(object):
+class StaticProperty:
     
     def __init__(self, name):
         self.name = name
@@ -78,26 +78,24 @@ class StaticProperty(object):
         return getattr(cls._meta.config_manager, self.name)
 
 
-class ConfigGroup(object):
-    
-    class __metaclass__(type):
-        
+class ConfigGroupMetaKlass(type):
+
         def __new__(self, name, bases, attrs):
-            
+
             # skip all magic for ConfigGroup class itself
             if bases == (object, ):
                 return type.__new__(self, name, bases, attrs)
-            
+
             # pop all form fields from subclass to move them
             # into "Meta" class and create a "Form" class
             fields = {}
-            for key in attrs.keys():
+            for key in list(attrs.keys()):
                 if isinstance(attrs[key], forms.Field):
                     fields[key] = attrs.pop(key)
-            
+
             # config manager will be used to get / set values
             config_manager = ConfigManager(name, fields)
-            
+
             # "Form" class is created based on fields definitions
             # fields will contain subclass name as prefix to allow
             # multiple forms usage on same page without creating
@@ -106,7 +104,7 @@ class ConfigGroup(object):
             for field_name, field in fields.items():
                 form_attrs["%s.%s" % (name, field_name)] = field
             form = type(name + "Form", (forms.Form, ), form_attrs)
-            
+
             # "Meta" class will hold fields definition, manager
             # instance and "Form" class
             meta_attrs = {
@@ -115,18 +113,19 @@ class ConfigGroup(object):
                 "form_class": form,
                 "fields": fields
             }
-            meta = type(name + "Meta", (ConfigGroupMeta, ), meta_attrs)()
-            
+            meta_kls = type(name + "Meta", (ConfigGroupMeta, ), meta_attrs)
+            meta = meta_kls()
+
             def create_getter(field_name):
                 getter = lambda: getattr(config_manager, field_name)
                 getter.__name__ = "%s.get_%s" % (name, field_name)
                 return staticmethod(getter)
-            
+
             def create_setter(field_name):
                 setter = lambda val: setattr(config_manager, field_name, val)
                 setter.__name__ = "%s.set_%s" % (name, field_name)
                 return staticmethod(setter)
-            
+
             # define getter / setter functions for all fields
             for field_name in fields:
                 attrs.update({
@@ -134,17 +133,22 @@ class ConfigGroup(object):
                     "get_%s" % field_name: create_getter(field_name),
                     "set_%s" % field_name: create_setter(field_name),
                 })
-            
+
             attrs.update(_meta=meta)
             klass = type.__new__(self, name, bases, attrs)
-            
+
             # we register subclass in a list to automatically display
             # all config forms on admin page
             if klass not in registry:
                 registry.append(klass)
-            
+
             return klass
-        
+
         # setattr is passed to config manager instance
         def __setattr__(self, name, value):
             return setattr(self._meta.config_manager, name, value)
+
+
+class ConfigGroup(metaclass=ConfigGroupMetaKlass):
+    pass
+

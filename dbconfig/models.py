@@ -2,10 +2,10 @@
 
 import os
 import base64
-import cPickle
+import pickle
 
 from django.db import models
-from django.db.models.fields.files import FieldFile, ImageFieldFile
+from django.db.models.fields.files import FieldFile
 from django.core import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.uploadedfile import UploadedFile
@@ -129,13 +129,13 @@ class DbConfigValue(models.Model):
     value64 = models.TextField()
     
     def get_value(self):
-        pickled = base64.decodestring(self.value64)
-        value = cPickle.loads(pickled)
+        pickled = base64.decodebytes(self.value64.encode('ascii'))
+        value = pickle.loads(pickled)
         return value
     
     def set_value(self, value):
-        pickled = cPickle.dumps(value, protocol=2)
-        self.value64 = base64.encodestring(pickled)
+        pickled = pickle.dumps(value, protocol=2)
+        self.value64 = base64.encodebytes(pickled)
         return value
     
     value = property(get_value, set_value)

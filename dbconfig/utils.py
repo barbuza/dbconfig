@@ -11,6 +11,9 @@ __all__ = ("registry", "ConfigGroup", "autodiscover", )
 registry = []
 
 
+FIELD_SEPARATOR = '___'
+
+
 def autodiscover():
     for models_module in get_apps():
         app_name = models_module.__name__.rsplit(".", 1)[0]
@@ -30,14 +33,14 @@ class ConfigManager:
     def __getattr__(self, name):
         if name not in self._fields:
             raise AttributeError(name)
-        field_name = "%s.%s" % (self._name, name)
+        field_name = "%s%s%s" % (self._name, FIELD_SEPARATOR, name)
         return DbConfigValue.objects.get_value_for(field_name)
     
     def __setattr__(self, name, value):
         if name not in self._fields \
                 or not isinstance(self._fields[name], forms.Field):
             raise AttributeError(name)
-        field_name = "%s.%s" % (self._name, name)
+        field_name = "%s%s%s" % (self._name, FIELD_SEPARATOR, name)
         DbConfigValue.objects.set_value_for(field_name, value)
 
 
@@ -45,8 +48,8 @@ class ConfigGroupMeta:
     
     def update(self, **kwargs):
         for name, value in kwargs.items():
-            if name.startswith("%s." % self.name):
-                name = name[len(self.name) + 1:]
+            if name.startswith("%s%s" % (self.name, FIELD_SEPARATOR)):
+                name = name[len(self.name) + len(FIELD_SEPARATOR):]
             setattr(self.config_manager, name, value)
     
     @property
@@ -64,7 +67,7 @@ class ConfigGroupMeta:
     def form_initial(self):
         res = {}
         for name in self.keys:
-            field_name = "%s.%s" % (self.name, name)
+            field_name = "%s%s%s" % (self.name, FIELD_SEPARATOR, name)
             res[field_name] = getattr(self.config_manager, name)
         return res
 
@@ -102,7 +105,7 @@ class ConfigGroupMetaKlass(type):
             # boring formsets
             form_attrs = {}
             for field_name, field in fields.items():
-                form_attrs["%s.%s" % (name, field_name)] = field
+                form_attrs["%s%s%s" % (name, FIELD_SEPARATOR, field_name)] = field
             form = type(name + "Form", (forms.Form, ), form_attrs)
 
             # "Meta" class will hold fields definition, manager

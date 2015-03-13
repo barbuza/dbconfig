@@ -4,21 +4,25 @@ from django.contrib import admin
 from django.contrib.admin.options import csrf_protect_m
 from django import template
 from django.shortcuts import render_to_response, redirect
+from django.dispatch import Signal
 
 from .models import DbConfigValue
 from .utils import registry
 
 
+post_save = Signal(providing_args=[])
+
+
 class ConfigAdmin(admin.ModelAdmin):
-    
+
     def has_add_permission(self, request):
         return False
-    
+
     def has_change_permission(self, request, instance=None):
         return instance is None
-    
+
     has_delete_permission = has_change_permission
-    
+
     @csrf_protect_m
     def changelist_view(self, request, extra_context=None):
         valid = True
@@ -44,7 +48,9 @@ class ConfigAdmin(admin.ModelAdmin):
         if request.method == "POST" and valid:
             for form in forms:
                 form["cls"]._meta.update(**form["form"].cleaned_data)
+                post_save.send(sender=form["cls"])
             self.message_user(request, u"Config saved")
+
             return redirect(request.path)
         context = template.RequestContext(request, {"forms": forms})
         return render_to_response("admin/dbconfig_list.html", context)
